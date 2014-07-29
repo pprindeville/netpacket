@@ -23,7 +23,7 @@ BEGIN {
                         ETH_TYPE_PPPOED    
                         ETH_TYPE_PPPOES    /;
 
-    @EXPORT_OK = ( 'eth_strip', @eth_types ); 
+    @EXPORT_OK = ( 'eth_strip', 'ETH_HLEN', @eth_types ); 
 
     %EXPORT_TAGS = (
         ALL         => [@EXPORT, @EXPORT_OK],
@@ -48,6 +48,8 @@ use constant ETH_TYPE_802_1Q    => 0x8100;
 use constant ETH_TYPE_IPX       => 0x8137;
 use constant ETH_TYPE_PPPOED    => 0x8863;
 use constant ETH_TYPE_PPPOES    => 0x8864;
+
+use constant ETH_HLEN		=> 6;
 
 #
 # VLAN Tag field masks
@@ -75,10 +77,9 @@ sub decode {
 
     if (defined($pkt)) {
 
-        my($sm_lo, $sm_hi, $dm_lo, $dm_hi, $tcid);
+        my($sm, $dm, $tcid);
 
-        ($dm_hi, $dm_lo, $sm_hi, $sm_lo, $self->{type}) = unpack('NnNnn' ,
-$pkt);
+        ($dm, $sm, $self->{type}) = unpack('a6a6n', $pkt);
 
         # Check for 802.1Q VLAN tag and unpack to account for 4-byte offset
         if ($self->{type} == ETH_TYPE_802_1Q) {
@@ -97,8 +98,8 @@ $pkt);
 
         # Convert MAC addresses to hex string to avoid representation problems
 
-        $self->{src_mac} = sprintf "%08x%04x", $sm_hi, $sm_lo;
-        $self->{dest_mac} = sprintf "%08x%04x", $dm_hi, $dm_lo;
+        $self->{src_mac} = unpack('H12', $sm);
+        $self->{dest_mac} = unpack('H12', $dm);
     }
 
     # Return a blessed object
