@@ -347,8 +347,8 @@ sub new {
 	$self->{proto} = $args{proto};
     }
 
-    $self->{src_ip} = scalar gethostbyname($args{src_ip});
-    $self->{dest_ip} = scalar gethostbyname($args{dest_ip});
+    $self->{src_ip} = $args{src_ip};
+    $self->{dest_ip} = $args{dest_ip};
 
     $self->{_parent} = undef;
 

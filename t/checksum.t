@@ -5,10 +5,11 @@ use Test::More tests => 4;
 
 use NetPacket::TCP;
 use NetPacket::UDP;
+use NetPacket::IP;
 
 my $ip = { 
-	src_ip => scalar gethostbyname('127.0.0.1'),
-	dest_ip => scalar gethostbyname('192.168.0.1'),
+	src_ip => from_dotquad('127.0.0.1'),
+	dest_ip => from_dotquad('192.168.0.1'),
 };
 
 bless $ip, 'NetPacket::IP';
@@ -58,8 +59,8 @@ my $udp2 = NetPacket::UDP->new(
 );
 
 my $ip2 = NetPacket::IP->new(
-	src_ip => '127.0.0.1',
-	dest_ip => '192.168.0.1',
+	src_ip => from_dotquad('127.0.0.1'),
+	dest_ip => from_dotquad('192.168.0.1'),
 	payload => $udp
 );
 

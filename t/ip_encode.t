@@ -3,7 +3,7 @@ use warnings;
 
 use Test::More tests => 4;
 
-use NetPacket::IP qw(:protos :flags);
+use NetPacket::IP qw(:protos :flags from_dotquad);
 use NetPacket::Ethernet;
 use NetPacket::TCP;
 
@@ -32,8 +32,8 @@ my $tcp2 = NetPacket::TCP->new(
 );
 
 my $ip2 = NetPacket::IP->new(
-	src_ip => '96.6.121.42',
-	dest_ip => '192.168.2.11',
+	src_ip => from_dotquad('96.6.121.42'),
+	dest_ip => from_dotquad('192.168.2.11'),
 	ttl => 56,
 	proto => IP_PROTO_TCP,
 	flags => IP_FLAG_DONTFRAG,
