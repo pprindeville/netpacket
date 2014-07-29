@@ -20,6 +20,10 @@ BEGIN {
     @EXPORT_OK = qw(arp_strip
 		    ARP_OPCODE_REQUEST ARP_OPCODE_REPLY RARP_OPCODE_REQUEST 
 		    RARP_OPCODE_REPLY
+		    ARPHRD_NETROM ARPHRD_ETHER ARPHRD_EETHER ARPHRD_AX25
+		    ARPHRD_PRONET ARPHRD_CHAOS ARPHRD_IEEE802 ARPHRD_ARCNET
+		    ARPHRD_APPLETLK ARPHRD_DLCI ARPHRD_ATM ARPHRD_METRICOM
+		    ARPHRD_IEEE1394 ARPHRD_EUI64 ARPHRD_INFINIBAND
     );
 
 # Tags:
@@ -28,9 +32,12 @@ BEGIN {
     ALL         => [@EXPORT, @EXPORT_OK],
     opcodes     => [qw(ARP_OPCODE_REQUEST ARP_OPCODE_REPLY RARP_OPCODE_REQUEST 
 		       RARP_OPCODE_REPLY)],
+    protos      => [qw(ARPHRD_NETROM ARPHRD_ETHER ARPHRD_AX25 ARPHRD_PRONET
+		       ARPHRD_CHAOS ARPHRD_IEEE802 ARPHRD_ARCNET
+		       ARPHRD_APPLETLK ARPHRD_DLCI ARPHRD_ATM ARPHRD_METRICOM
+		       ARPHRD_IEEE1394 ARPHRD_EUI64 ARPHRD_INFINIBAND)],
     strip       => [qw(arp_strip)],
-);
-
+    );
 }
 
 # 
@@ -41,6 +48,26 @@ use constant ARP_OPCODE_REQUEST  => 1;
 use constant ARP_OPCODE_REPLY    => 2;
 use constant RARP_OPCODE_REQUEST => 3;
 use constant RARP_OPCODE_REPLY   => 4;
+
+#
+# List of hardware identifiers
+#
+
+use constant ARPHRD_NETROM	=> 0;
+use constant ARPHRD_ETHER	=> 1;
+use constant ARPHRD_EETHER	=> 2;
+use constant ARPHRD_AX25	=> 3;
+use constant ARPHRD_PRONET	=> 4;
+use constant ARPHRD_CHAOS	=> 5;
+use constant ARPHRD_IEEE802	=> 6;
+use constant ARPHRD_ARCNET	=> 7;
+use constant ARPHRD_APPLETLK	=> 8;
+use constant ARPHRD_DLCI	=> 15;
+use constant ARPHRD_ATM		=> 19;
+use constant ARPHRD_METRICOM	=> 23;
+use constant ARPHRD_IEEE1394	=> 24;
+use constant ARPHRD_EUI64	=> 27;
+use constant ARPHRD_INFINIBAND	=> 32;
 
 #
 # Decode the packet
@@ -59,11 +86,14 @@ sub decode {
     # Decode ARP packet
 
     if (defined($pkt)) {
-
 	($self->{htype}, $self->{proto}, $self->{hlen}, $self->{plen},
-	 $self->{opcode}, $self->{sha}, $self->{spa}, $self->{tha},
-	 $self->{tpa}) = 
-	     unpack('nnCCnH12H8H12H8' , $pkt);
+	 $self->{opcode}) = unpack('nnCCn', $pkt);
+
+        my $fmt = sprintf('@8a%da%da%da%d', $self->{hlen}, $self->{plen},
+			  $self->{hlen}, $self->{plen});
+
+	($self->{sha}, $self->{spa}, $self->{tha}, $self->{tpa}) = 
+	     unpack($fmt, $pkt);
 
 	$self->{data} = undef;
     }
@@ -88,11 +118,62 @@ sub strip {
 }
 
 #
+# Construct a packet
+#
+
+my @required = qw(htype proto opcode sha spa tha tpa);
+
+sub new {
+    my $class = shift;
+    my (%args) = @_;
+    my $self;
+
+    for my $arg (@required) {
+	die "argument $arg not specified" unless (exists $args{$arg});
+    }
+
+    warn "arguments 'hlen' and 'plen' are ignored." if (exists $args{hlen} || exists $args{plen});
+
+    die "arguments 'spa' and 'tpa' are inconsistent." if (length($args{spa}) != length($args{tpa}));
+    die "arguments 'sha' and 'tha' are inconsistent." if (length($args{sha}) != length($args{tha}));
+
+    $self = {};
+
+    bless $self, $class;
+
+    $self->{htype} = $args{htype};
+    $self->{proto} = $args{proto};
+    $self->{opcode} = $args{opcode};
+    $self->{hlen} = length($args{sha});
+    $self->{plen} = length($args{spa});
+    $self->{sha} = $args{sha};
+    $self->{tha} = $args{tha};
+    $self->{spa} = $args{spa};
+    $self->{tpa} = $args{tpa};
+
+    $self->{_parent} = $self->{data} = undef;
+
+    return $self;
+}
+
+sub length {
+    my $self = shift;
+    return (3 * 2 + 2 * 1 + 2 * $self->{hlen} + 2 * $self->{plen});
+}
+
+#
 # Encode a packet
 #
 
 sub encode {
-    die("Not implemented");
+    my $self = shift;
+    my $pkt;
+
+    $pkt = pack('nnCCna*a*a*a*', $self->{htype}, $self->{proto}, $self->{hlen},
+		$self->{plen}, $self->{opcode}, $self->{sha}, $self->{spa},
+		$self->{tha}, $self->{tpa});
+
+    return $pkt;
 }
 
 # Module return value
