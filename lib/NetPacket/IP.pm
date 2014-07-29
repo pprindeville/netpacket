@@ -8,6 +8,7 @@ package NetPacket::IP;
 
 use strict;
 use vars;
+use Socket qw(AF_INET inet_pton inet_ntop);
 use NetPacket qw(:ALL);
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
@@ -18,7 +19,7 @@ BEGIN {
 # Items to export into callers namespace by default
 # (move infrequently used names to @EXPORT_OK below)
 
-    @EXPORT = qw(
+    @EXPORT = qw(to_dotquad from_dotquad
     );
 
 # Other items we are prepared to export if requested
@@ -199,15 +200,13 @@ use constant IP_MAXPACKET => 65535;
 # Convert 32-bit IP address to dotted quad notation
 
 sub to_dotquad {
-    my($net) = @_ ;
-    my($na, $nb, $nc, $nd);
+    my $addr = shift;
+    return inet_ntop(AF_INET, $addr);
+}
 
-    $na = $net >> 24 & 255;
-    $nb = $net >> 16 & 255;
-    $nc = $net >>  8 & 255;
-    $nd = $net & 255;
-
-    return ("$na.$nb.$nc.$nd");
+sub from_dotquad {
+    my $addr = shift;
+    return inet_pton(AF_INET, $addr);
 }
 
 use Carp;

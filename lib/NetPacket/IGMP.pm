@@ -8,6 +8,7 @@ package NetPacket::IGMP;
 
 use strict;
 use vars;
+use NetPacket::IP;
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
@@ -64,19 +65,6 @@ use constant IGMP_IP_NO_HOSTS    => '224.0.0.0';     # Not assigned to anyone
 use constant IGMP_IP_ALL_HOSTS   => '224.0.0.1';     # All hosts on local net
 use constant IGMP_IP_ALL_ROUTERS => '224.0.0.2';     # All routers on local net
 
-# Convert 32-bit IP address to "dotted quad" notation
-
-sub to_dotquad {
-    my($net) = @_ ;
-    my($na, $nb, $nc, $nd);
-
-    $na = $net >> 24 & 255;
-    $nb = $net >> 16 & 255;
-    $nc = $net >>  8 & 255;
-    $nd = $net & 255;
-
-    return ("$na.$nb.$nc.$nd");
-}
 
 #
 # Decode the packet
