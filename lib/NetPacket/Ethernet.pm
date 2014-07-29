@@ -9,7 +9,7 @@ BEGIN {
     require Exporter;
     @ISA = qw(Exporter NetPacket);
 
-    @EXPORT = qw();
+    @EXPORT = qw(from_eu48 to_eu48);
 
     my @eth_types = qw/ ETH_TYPE_IP        
                         ETH_TYPE_ARP       
@@ -59,6 +59,21 @@ use constant VLAN_MASK_PCP => 0xE000;
 use constant VLAN_MASK_CFI => 0x1000;
 use constant VLAN_MASK_VID => 0x0FFF;
 
+sub to_eu48 {
+    my $addr = shift;
+    $addr = unpack('H12', $addr);
+    $addr =~ s/[0-9a-f]{2,2}(?!$)/$&:/g;
+    return $addr;
+}
+
+sub from_eu48 {
+    my $addr = shift;
+    # zero-pad single digits
+    $addr =~ s/(?<=[:|^])[0-9a-f](?=[$|:])/0$&/g;
+    $addr =~ s/://g;
+    return pack('H12', $addr);
+}
+
 #
 # Decode the packet
 #
@@ -96,10 +111,8 @@ sub decode {
             ( $self->{data} ) = unpack('x14a*' , $pkt);
         }
 
-        # Convert MAC addresses to hex string to avoid representation problems
-
-        $self->{src_mac} = unpack('H12', $sm);
-        $self->{dest_mac} = unpack('H12', $dm);
+        $self->{src_mac} = $sm;
+        $self->{dest_mac} = $dm;
     }
 
     # Return a blessed object
@@ -133,20 +146,17 @@ sub new {
     my (%args) = @_;
     my $self;
 
-    $self = {};
-
-    bless $self, $class;
-
     for my $arg (@required) {
 	die "argument $arg not specified" unless (exists $args{$arg});
     }
 
-    $args{src_mac} =~ s/://g;
-    $args{dest_mac} =~ s/://g;
+    $self = {};
+
+    bless $self, $class;
 
     $self->{type} = $args{type};
-    $self->{src_mac} = pack('H12', $args{src_mac});
-    $self->{dest_mac} = pack('H12', $args{dest_mac});
+    $self->{src_mac} = $args{src_mac};
+    $self->{dest_mac} = $args{dest_mac};
     $self->{data} = $args{data};
 
     if (exists $args{vid} || exists $args{pcp} || exists $args{cfi}) {
@@ -158,6 +168,8 @@ i});
 	$self->{cfi} = $args{cfi};
 	$self->{vid} = $args{vid};
     }
+
+    $self->{_parent} = undef;
 
     return $self;
 }
