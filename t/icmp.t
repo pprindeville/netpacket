@@ -1,11 +1,11 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2;                      # last test to print
+use Test::More tests => 4;                      # last test to print
 
 use NetPacket::Ethernet;
-use NetPacket::IP;
-use NetPacket::ICMP;
+use NetPacket::IP qw(:protos :flags to_dotquad from_dotquad);
+use NetPacket::ICMP qw(:types);
 
 my $datagram = binarize( <<'END_DATAGRAM' );
 00 00 00 00 00 00 00 00 00 00 00 00 08 00 45 00 
@@ -24,6 +24,7 @@ my $icmp = NetPacket::ICMP->decode( $ip->{data} );
 is $icmp->{cksum} => 55343, 'ICMP checksum';
 
 # recompute the checksum
+delete $icmp->{cksum};
 $icmp->checksum;
 
 is $icmp->{cksum} => 55343, 'recomputed ICMP checksum';
@@ -33,4 +34,33 @@ sub binarize {
 
     return join '' => map { chr hex } split ' ', $string;
 }
+
+my $icmp2 = NetPacket::ICMP->new(
+	type => ICMP_ECHO,
+	code => 0,
+	data => substr($datagram, 14 + 20 + 4),
+);
+
+# not dependent on IP header
+$icmp2->checksum();
+
+my $ip2 = NetPacket::IP->new(
+	src_ip => from_dotquad('127.0.0.1'),
+	dest_ip => from_dotquad('127.0.0.1'),
+	proto => IP_PROTO_ICMP,
+	ttl => 64,
+	id => 0,
+	flags => IP_FLAG_DONTFRAG,
+	data => $icmp2->encode(),
+);
+
+$ip2->checksum();
+
+# not included in deep compare
+delete $icmp->{_frame};
+delete $ip->{_frame};
+
+is_deeply($icmp2, $icmp, "icmp decode/construct comparison");
+
+is_deeply($ip2, $ip, "ip decode/construct comparison");
 

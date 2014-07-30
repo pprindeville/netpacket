@@ -173,21 +173,58 @@ sub strip {
     return $icmp_obj->{data};
 }
 
+sub length {
+    my $self = shift;
+    return (4 + CORE::length($self->{data}));
+}
+
+#
+# Construct a packet
+#
+
+my @required = qw(type code data);
+
+sub new {
+    my $class = shift;
+    my %args = @_;
+    my $self;
+
+    for my $arg (@required) {
+	die "argument $arg not specified" unless (exists $args{$arg});
+    }
+
+    $self = {};
+
+    bless $self, $class;
+
+    $self->{type} = $args{type};
+    $self->{code} = $args{code};
+    $self->{data} = $args{data};
+
+    # allow seeding of wrong checksum
+    $self->{cksum} = $args{cksum} if (exists $args{cksum});
+
+    # ideally we could detect the type,code tuple and format the rest
+    # of the packet based on that
+
+    $self->{_parent} = undef;
+
+    return $self;
+}
+
 #
 # Encode a packet
 #
 
 sub encode {
     my $self = shift;
-    my ($ip) = @_;
-    my ($packet);
-    
+
     # Checksum the packet
-    $self->checksum();
+    $self->checksum() unless (exists $self->{cksum});
 
     # Put the packet together
-    $packet = pack("CCna*", $self->{type}, $self->{code}, 
-                $self->{cksum}, $self->{data});
+    my $packet = pack("CCna*", $self->{type}, $self->{code}, 
+		      $self->{cksum}, $self->{data});
 
     return($packet); 
 }
@@ -197,15 +234,15 @@ sub encode {
 
 sub checksum {
     my $self = shift;
-    my ($ip) = @_;
-    my ($packet,$zero);
 
-    # Put the packet together for checksumming
-    $zero = 0;
-    $packet = pack("CCna*", $self->{type}, $self->{code},
-                $zero, $self->{data});
+    if (! exists $self->{cksum}) {
+	# Put the packet together for checksumming
+	my $packet = pack("CCna*", $self->{type}, $self->{code},
+			  0, $self->{data});
 
-    $self->{cksum} = htons(in_cksum($packet));
+	$self->{cksum} = htons(in_cksum($packet));
+    }
+    return $self->{cksum};
 }
 
 
