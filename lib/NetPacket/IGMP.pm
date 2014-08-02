@@ -8,6 +8,7 @@ package NetPacket::IGMP;
 
 use strict;
 use vars;
+use NetPacket qw(:ALL);
 use NetPacket::IP;
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
@@ -25,7 +26,11 @@ BEGIN {
 
     @EXPORT_OK = qw(igmp_strip
 		    IGMP_VERSION_RFC998 IGMP_VERSION_RFC1112
+		    IGMP_VERSION_RFC2236 IGMP_VERSION_RFC3376
 		    IGMP_MSG_HOST_MQUERY IGMP_MSG_HOST_MREPORT
+		    IGMP_MSG_HOST_MQUERYv2 IGMP_MSG_HOST_MREPORTv1
+		    IGMP_MSG_HOST_MREPORTv2 IGMP_MSG_HOST_LEAVE
+		    IGMP_MSG_HOST_MREPORTv3
 		    IGMP_IP_NO_HOSTS IGMP_IP_ALL_HOSTS
 		    IGMP_IP_ALL_ROUTERS
     );
@@ -35,11 +40,15 @@ BEGIN {
     %EXPORT_TAGS = (
     ALL         => [@EXPORT, @EXPORT_OK],
     strip       => [qw(igmp_strip)],
-    versions    => [qw(IGMP_VERSION_RFC998 IGMP_VERSION_RFC1112)],
-    msgtypes    => [qw(IGMP_HOST_MQUERY IGMP_HOST_MREPORT)],
+    versions    => [qw(IGMP_VERSION_RFC998 IGMP_VERSION_RFC1112
+		       IGMP_VERSION_RFC2236 IGMP_VERSION_RFC3376)],
+    msgtypes    => [qw(IGMP_MSG_HOST_MQUERY IGMP_MSG_HOST_MREPORT
+		       IGMP_MSG_HOST_MQUERYv2 IGMP_MSG_HOST_MREPORTv1
+		       IGMP_MSG_HOST_MREPORTv2 IGMP_MSG_HOST_LEAVE
+		       IGMP_MSG_HOST_MREPORTv3)],
     group_addrs => [qw(IGMP_IP_NO_HOSTS IGMP_IP_ALL_HOSTS
 		      IGMP_IP_ALL_ROUTERS)]  
-);
+    );
 
 }
 
@@ -49,6 +58,8 @@ BEGIN {
 
 use constant IGMP_VERSION_RFC998  => 0;      # Version 0 of IGMP (obsolete)
 use constant IGMP_VERSION_RFC1112 => 1;      # Version 1 of IGMP
+use constant IGMP_VERSION_RFC2236 => 2;      # Version 2 of IGMP
+use constant IGMP_VERSION_RFC3376 => 3;      # Version 3 of IGMP
 
 #
 # Message types
@@ -56,6 +67,13 @@ use constant IGMP_VERSION_RFC1112 => 1;      # Version 1 of IGMP
 
 use constant IGMP_MSG_HOST_MQUERY  => 1;      # Host membership query
 use constant IGMP_MSG_HOST_MREPORT => 2;      # Host membership report
+
+use constant IGMP_MSG_HOST_MQUERYv2  => 0x11; # Host membership query
+use constant IGMP_MSG_HOST_MREPORTv1 => 0x12; # Host membership report
+use constant IGMP_MSG_HOST_MREPORTv2 => 0x16; # Host membership report
+use constant IGMP_MSG_HOST_LEAVE     => 0x17; # Leave group
+
+use constant IGMP_MSG_HOST_MREPORTv3 => 0x22; # Host membership report
 
 #
 # IGMP IP addresses
@@ -83,19 +101,8 @@ sub decode {
     # Decode IGMP packet
 
     if (defined($pkt)) {
-	my $tmp;
-
-	($tmp, $self->{subtype}, $self->{cksum}, $self->{group_addr}, 
-	 $self->{data}) = unpack('CCnNa*', $pkt);
-    
-	# Extract bit fields
-	
-	$self->{version} = ($tmp & 0xf0) >> 4;
-	$self->{type} = $tmp & 0x0f;
-	
-	# Convert to dq notation
-	
-	$self->{group_addr} = to_dotquad($self->{group_addr});
+	($self->{type}, $self->{code}, $self->{cksum}, $self->{data}) =
+		unpack('CCna4a*', $pkt);
     }
 
     # Return a blessed object
@@ -117,11 +124,70 @@ sub strip {
 }
 
 #
+# Construct a packet
+#
+
+my @required = qw(type code data);
+
+sub new {
+    my $class = shift;
+    my %args = @_;
+    my $self;
+
+    for my $arg (@required) {
+	die "argument $arg not specified" unless (exists $args{$arg});
+    }
+
+    $self->{type} = $args{type};
+    $self->{code} = $args{code};
+
+    # would be nice to have variables to support formatting individual
+    # message types.
+    $self->{data} = $args{data};
+
+    $self->{cksum} = $args{cksum} if (exists $args{cksum});
+
+    $self->{_parent} = undef;
+
+    bless $self, $class;
+}
+
+sub length {
+    my $self = shift;
+    return (4 + CORE::length($self->{data}));
+}
+
+#
+# Compute checksum
+#
+
+sub checksum {
+    my $self = shift;
+
+    if (! exists $self->{cksum}) {
+	my $packet = pack('CCna*', $self->{type}, $self->{code},
+			  0, $self->{data});
+
+	$self->{cksum} = htons(in_cksum($packet));
+    }
+    return $self->{cksum};
+}
+
+#
 # Encode a packet
 #
 
 sub encode {
-    die("Not implemented");
+    my ($self, $ip) = @_;
+
+    if (! exists $self->{cksum}) {
+	die "need ip packet arg if checksum not already set" unless (defined $ip);
+	$self->checksum();
+    }
+
+    my $packet = pack('CCna*', $self->{type}, $self->{code},
+		      $self->{cksum}, $self->{data});
+    return $packet;
 }
 
 # Module return value

@@ -315,8 +315,8 @@ sub new {
         die "can't specify both data and payload" if (exists $args{payload});
 	$self->{data} = $args{data};
     } elsif (exists $args{payload}) {
-	die "payload must be UDP, TCP, or ICMP."
-		unless (ref($args{payload}) =~ m/^NetPacket::(TCP|UDP|ICMP)$/);
+	die "payload must be UDP, TCP, ICMP, or IGMP."
+		unless (ref($args{payload}) =~ m/^NetPacket::(TCP|UDP|ICMP|IGMP)$/);
 	$self->{payload} = $payload = $args{payload};
     } else {
 	die "argument data or payload not specified";
