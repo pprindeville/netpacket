@@ -8,7 +8,8 @@ package NetPacket::UDP;
 use strict;
 use vars;
 use NetPacket qw(:ALL);
-use NetPacket::IP qw(IP_PROTO_UDP);
+use NetPacket::IP qw(IP_PROTO_UDP _src_packed _dest_packed);
+use Carp;
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
@@ -52,7 +53,6 @@ sub decode {
     # Decode UDP packet
 
     if (defined($pkt)) {
-
 	($self->{src_port}, $self->{dest_port}, $self->{len}, $self->{cksum},
 	 $self->{data}) = unpack("nnnna*", $pkt);
     }
@@ -86,7 +86,7 @@ sub new {
     bless $self, $class;
 
     for my $arg (@required) {
-	die "argument $arg not specified" unless (exists $args{$arg});
+	confess "argument $arg not specified" unless (exists $args{$arg});
     }
 
     $self->{src_port} = $args{src_port};
@@ -114,7 +114,7 @@ sub encode {
     my ($self, $ip) = @_;
  
     if (! exists $self->{cksum}) {
-	die "need ip packet arg if checksum not already set" unless (defined $ip);
+	confess "need ip packet arg if checksum not already set" unless (defined $ip);
 	$self->checksum($ip);
     }
 
@@ -135,7 +135,7 @@ sub checksum {
 	my $packet = pack('a4a4CCnnnnna*',
 
 	  # fake ip header part
-	  $ip->{src_ip}, $ip->{dest_ip}, 0, IP_PROTO_UDP, $self->{len},
+	  $ip->_src_packed(), $ip->_dest_packed(), 0, IP_PROTO_UDP, $self->{len},
 
 	  # proper UDP part
 	  $self->{src_port}, $self->{dest_port}, $self->{len}, 0, $self->{data});

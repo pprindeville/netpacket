@@ -41,8 +41,8 @@ my $igmp2 = NetPacket::IGMP->new(
 $igmp2->checksum();
 
 my $ip2 = NetPacket::IP->new(
-	src_ip => from_dotquad('192.168.1.2'),
-	dest_ip => from_dotquad('224.0.0.1'),
+	src_ip => '192.168.1.2',
+	dest_ip => '224.0.0.1',
 	proto => IP_PROTO_IGMP,
 	ttl => 1,
 	id => 12058,

@@ -11,6 +11,7 @@ use strict;
 use vars;
 use NetPacket qw(:ALL);
 use NetPacket::IP qw(:ALL);
+use Carp;
 
 # TCP Flags
 
@@ -127,7 +128,7 @@ sub new {
     bless $self, $class;
 
     for my $arg (@required) {
-	die "argument $arg not specified" unless (exists $args{$arg});
+	confess "argument $arg not specified" unless (exists $args{$arg});
     }
 
     $self->{src_port} = $args{src_port};
@@ -165,7 +166,7 @@ sub encode {
     my ($packet,$tmp);
 
     if (! exists $self->{cksum}) {
-        die "need ip packet arg if checksum not already set" unless (defined $ip);
+        confess "need ip packet arg if checksum not already set" unless (defined $ip);
         $self->checksum($ip);
     }
 
@@ -205,7 +206,7 @@ sub checksum {
 	$options .= "\x00" x (_round4(CORE::length($options)) - CORE::length($options));
 
 	$packet = pack('a4a4nnnnNNnnnna*a*',
-		       $ip->{src_ip}, $ip->{dest_ip}, IP_PROTO_TCP, $tcplen,
+		       $ip->_src_packed(), $ip->_dest_packed(), IP_PROTO_TCP, $tcplen,
 		       $self->{src_port}, $self->{dest_port}, $self->{seqnum},
 		       $self->{acknum}, $tmp, $self->{winsize}, 0,
 		       $self->{urg}, $options, $self->{data});

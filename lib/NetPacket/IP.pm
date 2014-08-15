@@ -10,6 +10,7 @@ use strict;
 use vars;
 use Socket qw(AF_INET inet_pton inet_ntop);
 use NetPacket qw(:ALL);
+use Carp;
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
@@ -19,12 +20,12 @@ BEGIN {
 # Items to export into callers namespace by default
 # (move infrequently used names to @EXPORT_OK below)
 
-    @EXPORT = qw(to_dotquad from_dotquad
+    @EXPORT = qw(to_dotquad from_dotquad use_network_format
     );
 
 # Other items we are prepared to export if requested
 
-    @EXPORT_OK = qw(ip_strip _round4
+    @EXPORT_OK = qw(ip_strip _round4 _src_packed _dest_packed
 		    IP_PROTO_IP IP_PROTO_ICMP IP_PROTO_IGMP
 		    IP_PROTO_IPIP IP_PROTO_TCP IP_PROTO_EGP
 		    IP_PROTO_EGP IP_PROTO_PUP IP_PROTO_UDP
@@ -197,24 +198,57 @@ use constant IP_MSS             => 576;
 # Maximum IP Packet size
 use constant IP_MAXPACKET => 65535;
 
+# private variables
+
+our $network_format = 0;
+
+sub use_network_format {
+    my $ret = $network_format;
+    $network_format = shift if (@_ > 0);
+    return $ret;
+}
+
 # Convert 32-bit IP address to dotted quad notation
 
 sub to_dotquad {
     my $addr = shift;
-    return inet_ntop(AF_INET, $addr);
+    $addr = inet_ntop(AF_INET, $addr);
+    confess "not a valid IPv4 address" unless (defined $addr);
+    return $addr;
 }
 
 sub from_dotquad {
     my $addr = shift;
-    return inet_pton(AF_INET, $addr);
+    $addr = inet_pton(AF_INET, $addr);
+    confess "not a valid dotted quad" unless (defined $addr);
+    return $addr;
 }
-
-use Carp;
 
 # round up to next multiple of 4
 sub _round4 {
     my $num = shift;
     return int(($num + 3) / 4) * 4;
+}
+
+sub _validate_dotquad {
+    my $addr = shift;
+    if ($network_format) {
+	confess "not an IPv4 address" unless (length($addr) == 4);
+    } else {
+	my $parsed = inet_pton(AF_INET, $addr);
+	confess "not a valid dotted quad" unless (defined $parsed);
+    }
+    return $addr;
+}
+
+sub _src_packed {
+    my $self = shift;
+    return ($network_format ? $self->{src_ip} : inet_pton(AF_INET, $self->{src_ip}));
+}
+
+sub _dest_packed {
+    my $self = shift;
+    return ($network_format ? $self->{dest_ip} : inet_pton(AF_INET, $self->{dest_ip}));
 }
 
 #
@@ -260,11 +294,18 @@ sub decode {
 	($self->{options}, $self->{data}) = unpack("a" . $olen .
 						   "a*", $self->{options});
 
-    my $length = $self->{hlen};
-    $length = 5 if $length < 5;  # precaution against bad header
+        my $length = $self->{hlen};
+        $length = 5 if $length < 5;  # precaution against bad header
 
-    # truncate data to the length given by the header
-    $self->{data} = substr $self->{data}, 0, $self->{len} - 4 * $length;
+        # truncate data to the length given by the header
+        $self->{data} = substr $self->{data}, 0, $self->{len} - 4 * $length;
+
+	# if we're trying to be v1.x compatible, convert the addresses
+	# back into presentation (human-readable) format
+        unless ($network_format) {
+	    $self->{src_ip} = inet_ntop(AF_INET, $self->{src_ip});
+	    $self->{dest_ip} = inet_ntop(AF_INET, $self->{dest_ip});
+	}
     }
 
     return bless $self, $class;
@@ -308,18 +349,18 @@ sub new {
     my $payload = undef;
 
     for my $arg (@required) {
-	die "argument $arg not specified" unless (exists $args{$arg});
+	confess "argument $arg not specified" unless (exists $args{$arg});
     }
 
     if (exists $args{data}) {
-        die "can't specify both data and payload" if (exists $args{payload});
+        confess "can't specify both data and payload" if (exists $args{payload});
 	$self->{data} = $args{data};
     } elsif (exists $args{payload}) {
-	die "payload must be UDP, TCP, ICMP, or IGMP."
+	confess "payload must be UDP, TCP, ICMP, or IGMP."
 		unless (ref($args{payload}) =~ m/^NetPacket::(TCP|UDP|ICMP|IGMP)$/);
 	$self->{payload} = $payload = $args{payload};
     } else {
-	die "argument data or payload not specified";
+	confess "argument data or payload not specified";
     }
 
     $self->{options} = (exists $args{options} ? $args{options} : '');
@@ -339,25 +380,21 @@ sub new {
 	} elsif (ref($payload) eq 'NetPacket::IGMP') {
 	   $self->{proto} = IP_PROTO_IGMP;
 	} else {
-	   die "missing proto arg" unless (exists $args{proto});
+	   confess "missing proto arg" unless (exists $args{proto});
 	   $self->{proto} = $args{proto};
 	}
     } else {
-	die "missing proto arg" unless (exists $args{proto});
+	confess "missing proto arg" unless (exists $args{proto});
 	$self->{proto} = $args{proto};
     }
 
-    $self->{src_ip} = $args{src_ip};
-    $self->{dest_ip} = $args{dest_ip};
+    $self->{src_ip} = _validate_dotquad($args{src_ip});
+    $self->{dest_ip} = _validate_dotquad($args{dest_ip});
 
     $self->{_parent} = undef;
 
     # now give payload protocol a chance to calculate pseudo-header
     $payload->checksum($self) if ($payload && ! exists $args{cksum});
-
-    # consistency check with version
-    die "not valid ipv4 address(es)"
-	unless (length($self->{src_ip}) == 4 && length($self->{dest_ip}) == 4);
 
     $self->{foffset} = (exists $args{foffset} ? $args{foffset} : 0);
     $self->{flags} = (exists $args{flags} ? $args{flags} : 0);
@@ -400,7 +437,7 @@ sub checksum {
 	my $fmt = 'CCnnnCCna4a4a*a*';
 	my @pkt = ($tmp, $self->{tos},$self->{len}, 
                    $self->{id}, $offset, $self->{ttl}, $self->{proto}, 
-                   0, $self->{src_ip}, $self->{dest_ip}, $options); 
+                   0, $self->_src_packed(), $self->_dest_packed(), $options); 
 
 	# construct header to calculate the checksum
 	$hdr = pack($fmt, @pkt);
@@ -435,7 +472,7 @@ sub encode {
     my $fmt = 'CCnnnCCna4a4a*a*';
     my @pkt = ($tmp, $self->{tos},$self->{len}, 
                $self->{id}, $offset, $self->{ttl}, $self->{proto}, 
-               $self->{cksum}, $self->{src_ip}, $self->{dest_ip}, $options); 
+               $self->{cksum}, $self->_src_packed(), $self->_dest_packed(), $options); 
 
     $hdr = pack($fmt, @pkt);
 

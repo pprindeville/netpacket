@@ -7,9 +7,11 @@ use NetPacket::TCP;
 use NetPacket::UDP;
 use NetPacket::IP;
 
+use_network_format(0);
+
 my $ip = { 
-	src_ip => from_dotquad('127.0.0.1'),
-	dest_ip => from_dotquad('192.168.0.1'),
+	src_ip => '127.0.0.1',
+	dest_ip => '192.168.0.1',
 };
 
 bless $ip, 'NetPacket::IP';
@@ -57,6 +59,8 @@ my $udp2 = NetPacket::UDP->new(
 	dest_port => 14,
 	data => "foo\x00\x00\x00\x00",
 );
+
+use_network_format(1);
 
 my $ip2 = NetPacket::IP->new(
 	src_ip => from_dotquad('127.0.0.1'),

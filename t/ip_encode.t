@@ -3,9 +3,11 @@ use warnings;
 
 use Test::More tests => 4;
 
-use NetPacket::IP qw(:protos :flags from_dotquad);
+use NetPacket::IP qw(:ALL);
 use NetPacket::Ethernet;
 use NetPacket::TCP;
+
+use_network_format(1);
 
 my $datagram  =  join '', map { chr } split ':', join ':' => <DATA>;
 
