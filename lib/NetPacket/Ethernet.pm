@@ -3,6 +3,8 @@ package NetPacket::Ethernet;
 
 use strict;
 use vars;
+use NetPacket;
+use Carp;
 
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
@@ -61,6 +63,7 @@ use constant VLAN_MASK_VID => 0x0FFF;
 
 sub to_eu48 {
     my $addr = shift;
+    confess "not a eu48 address!" unless (length($addr) == 6);
     $addr = unpack('H12', $addr);
     $addr =~ s/[0-9a-f]{2,2}(?!$)/$&:/g;
     return $addr;
@@ -69,10 +72,35 @@ sub to_eu48 {
 sub from_eu48 {
     my $addr = shift;
     # zero-pad single digits
+    confess "not a eu48 address!"
+	unless ($addr =~ m/^[0-9a-f]{12}$/ || $addr =~ m/^[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}$/);
     $addr =~ s/(?<=[:|^])[0-9a-f](?=[$|:])/0$&/g;
     $addr =~ s/://g;
     return pack('H12', $addr);
 }
+
+sub _validate_eu48 {
+    my $addr = shift;
+    if ($network_format) {
+	confess "not a eu48 address!" unless (length($addr) == 6);
+	return $addr;
+    } else {
+	confess "not a eu48 address!"
+	    unless ($addr =~ m/^[0-9a-f]{12}$/ || $addr =~ m/^[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}:[0-9a-f]{1,2}$/);
+	return $addr;
+    }
+}
+
+sub _src_packed {
+    my $self = shift;
+    return ($network_format ? $self->{src_mac} : unpack('H12', $self->{src_mac}));
+}
+
+sub _dest_packed {
+    my $self = shift;
+    return ($network_format ? $self->{dest_mac} : unpack('H12', $self->{dest_mac}));
+}
+
 
 #
 # Decode the packet
@@ -111,8 +139,8 @@ sub decode {
             ( $self->{data} ) = unpack('x14a*' , $pkt);
         }
 
-        $self->{src_mac} = $sm;
-        $self->{dest_mac} = $dm;
+        $self->{src_mac} = ($network_format ? $sm : unpack('H12', $sm));
+        $self->{dest_mac} = ($network_format ? $dm : unpack('H12', $dm));
     }
 
     # Return a blessed object
@@ -155,8 +183,8 @@ sub new {
     bless $self, $class;
 
     $self->{type} = $args{type};
-    $self->{src_mac} = $args{src_mac};
-    $self->{dest_mac} = $args{dest_mac};
+    $self->{src_mac} = _validate_eu48($args{src_mac});
+    $self->{dest_mac} = _validate_eu48($args{dest_mac});
     $self->{data} = $args{data};
 
     if (exists $args{vid} || exists $args{pcp} || exists $args{cfi}) {
@@ -193,7 +221,7 @@ sub encode {
 	$vhdr = pack('nn', ETH_TYPE_802_1Q, $tcid);
     }
 
-    $frame = pack('a6a6a*na*', $self->{dest_mac}, $self->{src_mac}, $vhdr, $self->{type}, $self->{data});
+    $frame = pack('a6a6a*na*', $self->_dest_packed(), $self->_src_packed(), $vhdr, $self->{type}, $self->{data});
 
     return $frame;
 }

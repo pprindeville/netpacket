@@ -20,7 +20,7 @@ BEGIN {
 # Items to export into callers namespace by default
 # (move infrequently used names to @EXPORT_OK below)
 
-    @EXPORT = qw(to_dotquad from_dotquad use_network_format
+    @EXPORT = qw(to_dotquad from_dotquad
     );
 
 # Other items we are prepared to export if requested
@@ -198,16 +198,6 @@ use constant IP_MSS             => 576;
 # Maximum IP Packet size
 use constant IP_MAXPACKET => 65535;
 
-# private variables
-
-our $network_format = 0;
-
-sub use_network_format {
-    my $ret = $network_format;
-    $network_format = shift if (@_ > 0);
-    return $ret;
-}
-
 # Convert 32-bit IP address to dotted quad notation
 
 sub to_dotquad {
@@ -222,12 +212,6 @@ sub from_dotquad {
     $addr = inet_pton(AF_INET, $addr);
     confess "not a valid dotted quad" unless (defined $addr);
     return $addr;
-}
-
-# round up to next multiple of 4
-sub _round4 {
-    my $num = shift;
-    return int(($num + 3) / 4) * 4;
 }
 
 sub _validate_dotquad {
@@ -249,6 +233,12 @@ sub _src_packed {
 sub _dest_packed {
     my $self = shift;
     return ($network_format ? $self->{dest_ip} : inet_pton(AF_INET, $self->{dest_ip}));
+}
+
+# round up to next multiple of 4
+sub _round4 {
+    my $num = shift;
+    return int(($num + 3) / 4) * 4;
 }
 
 #

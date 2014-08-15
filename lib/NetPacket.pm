@@ -19,7 +19,7 @@ BEGIN {
 # Items to export into callers namespace by default
 # (move infrequently used names to @EXPORT_OK below)
 
-    @EXPORT = qw(
+    @EXPORT = qw(use_network_format $network_format
     );
 
 # Other items we are prepared to export if requested
@@ -33,6 +33,14 @@ BEGIN {
     ALL         => [@EXPORT, @EXPORT_OK],
 );
 
+}
+
+our $network_format = 0;
+
+sub use_network_format {
+    my $ret = $network_format;
+    $network_format = shift if (@_ > 0);
+    return $ret;
 }
 
 #
