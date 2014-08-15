@@ -3,10 +3,9 @@ use warnings;
 
 use Test::More tests => 3;
 
-use NetPacket;
 use NetPacket::ARP qw(:opcodes :protos);
 use NetPacket::Ethernet qw(:types ETH_HLEN from_eu48);
-use NetPacket::IP qw(from_dotquad);
+use NetPacket::IP;
 
 use_network_format(1);
 

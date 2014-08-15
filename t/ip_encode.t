@@ -3,7 +3,6 @@ use warnings;
 
 use Test::More tests => 4;
 
-use NetPacket;
 use NetPacket::IP qw(:ALL);
 use NetPacket::Ethernet;
 use NetPacket::TCP;
