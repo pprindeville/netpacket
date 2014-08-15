@@ -175,7 +175,7 @@ sub new {
     my $self;
 
     for my $arg (@required) {
-	die "argument $arg not specified" unless (exists $args{$arg});
+	confess "argument $arg not specified" unless (exists $args{$arg});
     }
 
     $self = {};
@@ -188,7 +188,7 @@ sub new {
     $self->{data} = $args{data};
 
     if (exists $args{vid} || exists $args{pcp} || exists $args{cfi}) {
-	die "vlan encoding requires vid, pcp, and cfi parameters"
+	confess "vlan encoding requires vid, pcp, and cfi parameters"
 		unless (exists $args{vid} && exists $args{pcp} && exists $args{c
 i});
 
