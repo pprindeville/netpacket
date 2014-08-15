@@ -7,9 +7,11 @@ use strict;
 use vars;
 use NetPacket qw(:ALL);
 
-our (@ISA, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
     @EXPORT_OK = qw(

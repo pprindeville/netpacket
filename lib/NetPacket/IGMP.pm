@@ -11,9 +11,11 @@ use vars;
 use NetPacket qw(:ALL);
 use NetPacket::IP;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default

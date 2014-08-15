@@ -11,9 +11,11 @@ use NetPacket qw(:ALL);
 use NetPacket::IP qw(IP_PROTO_UDP _src_packed _dest_packed);
 use Carp;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default

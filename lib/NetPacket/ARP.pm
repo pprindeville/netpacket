@@ -4,9 +4,11 @@ package NetPacket::ARP;
 use strict;
 use vars;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default

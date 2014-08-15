@@ -12,15 +12,17 @@ use Socket qw(AF_INET inet_pton inet_ntop);
 use NetPacket qw(:ALL);
 use Carp;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default
 # (move infrequently used names to @EXPORT_OK below)
 
-    @EXPORT = qw(to_dotquad from_dotquad
+    @EXPORT = qw(to_dotquad from_dotquad use_network_format
     );
 
 # Other items we are prepared to export if requested

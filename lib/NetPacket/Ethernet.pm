@@ -3,15 +3,17 @@ package NetPacket::Ethernet;
 
 use strict;
 use vars;
-use NetPacket;
+use NetPacket qw(:ALL);
 use Carp;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
-    @EXPORT = qw(from_eu48 to_eu48);
+    @EXPORT = qw(from_eu48 to_eu48 use_network_format);
 
     my @eth_types = qw/ ETH_TYPE_IP        
                         ETH_TYPE_ARP       

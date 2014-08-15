@@ -24,9 +24,11 @@ use constant URG => 0x20;
 use constant ECE => 0x40;
 use constant CWR => 0x80;
 
-our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 BEGIN {
     require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default

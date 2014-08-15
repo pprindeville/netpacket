@@ -2,12 +2,13 @@ package NetPacket::ICMP;
 # ABSTRACT: Assemble and disassemble ICMP (Internet Control Message Protocol) packets. 
 
 use strict;
-use vars qw( @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-use Exporter;
 use NetPacket qw(:ALL);
 
-
 BEGIN {
+    require Exporter;
+
+    our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+
     @ISA = qw(Exporter NetPacket);
 
 # Items to export into callers namespace by default
